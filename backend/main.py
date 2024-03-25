@@ -4,6 +4,7 @@ import markdown
 import time
 import os
 import sys
+import logging
 import requests
 
 from fastapi import FastAPI, Request, Depends, status
@@ -38,9 +39,15 @@ from config import (
     FRONTEND_BUILD_DIR,
     MODEL_FILTER_ENABLED,
     MODEL_FILTER_LIST,
+    GLOBAL_LOG_LEVEL,
+    SRC_LOG_LEVELS,
+    WEBHOOK_URL,
 )
 from constants import ERROR_MESSAGES
 
+logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
+log = logging.getLogger(__name__)
+log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
@@ -58,6 +65,9 @@ app = FastAPI(docs_url="/docs" if ENV == "dev" else None, redoc_url=None)
 app.state.MODEL_FILTER_ENABLED = MODEL_FILTER_ENABLED
 app.state.MODEL_FILTER_LIST = MODEL_FILTER_LIST
 
+app.state.WEBHOOK_URL = WEBHOOK_URL
+
+
 origins = ["*"]
 
 
@@ -66,7 +76,7 @@ class RAGMiddleware(BaseHTTPMiddleware):
         if request.method == "POST" and (
             "/api/chat" in request.url.path or "/chat/completions" in request.url.path
         ):
-            print(request.url.path)
+            log.debug(f"request.url.path: {request.url.path}")
 
             # Read the original request body
             body = await request.body()
@@ -89,7 +99,7 @@ class RAGMiddleware(BaseHTTPMiddleware):
                 )
                 del data["docs"]
 
-                print(data["messages"])
+                log.debug(f"data['messages']: {data['messages']}")
 
             modified_body_bytes = json.dumps(data).encode("utf-8")
 
@@ -178,7 +188,7 @@ class ModelFilterConfigForm(BaseModel):
 
 
 @app.post("/api/config/model/filter")
-async def get_model_filter_config(
+async def update_model_filter_config(
     form_data: ModelFilterConfigForm, user=Depends(get_admin_user)
 ):
 
@@ -194,6 +204,28 @@ async def get_model_filter_config(
     return {
         "enabled": app.state.MODEL_FILTER_ENABLED,
         "models": app.state.MODEL_FILTER_LIST,
+    }
+
+
+@app.get("/api/webhook")
+async def get_webhook_url(user=Depends(get_admin_user)):
+    return {
+        "url": app.state.WEBHOOK_URL,
+    }
+
+
+class UrlForm(BaseModel):
+    url: str
+
+
+@app.post("/api/webhook")
+async def update_webhook_url(form_data: UrlForm, user=Depends(get_admin_user)):
+    app.state.WEBHOOK_URL = form_data.url
+
+    webui_app.state.WEBHOOK_URL = app.state.WEBHOOK_URL
+
+    return {
+        "url": app.state.WEBHOOK_URL,
     }
 
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, getContext } from 'svelte';
 
 	import { toast } from 'svelte-sonner';
 
@@ -13,11 +13,13 @@
 	} from '$lib/constants';
 	import { WEBUI_NAME, config, user, models, settings } from '$lib/stores';
 
-	import { cancelChatCompletion, generateChatCompletion } from '$lib/apis/ollama';
+	import { cancelOllamaRequest, generateChatCompletion } from '$lib/apis/ollama';
 	import { generateOpenAIChatCompletion } from '$lib/apis/openai';
 
 	import { splitStream } from '$lib/utils';
 	import ChatCompletion from '$lib/components/playground/ChatCompletion.svelte';
+
+	const i18n = getContext('i18n');
 
 	let mode = 'chat';
 	let loaded = false;
@@ -50,7 +52,7 @@
 
 	// const cancelHandler = async () => {
 	// 	if (currentRequestId) {
-	// 		const res = await cancelChatCompletion(localStorage.token, currentRequestId);
+	// 		const res = await cancelOllamaRequest(localStorage.token, currentRequestId);
 	// 		currentRequestId = null;
 	// 		loading = false;
 	// 	}
@@ -93,7 +95,7 @@
 				const { value, done } = await reader.read();
 				if (done || stopResponseFlag) {
 					if (stopResponseFlag) {
-						await cancelChatCompletion(localStorage.token, currentRequestId);
+						await cancelOllamaRequest(localStorage.token, currentRequestId);
 					}
 
 					currentRequestId = null;
@@ -179,7 +181,7 @@
 				const { value, done } = await reader.read();
 				if (done || stopResponseFlag) {
 					if (stopResponseFlag) {
-						await cancelChatCompletion(localStorage.token, currentRequestId);
+						await cancelOllamaRequest(localStorage.token, currentRequestId);
 					}
 
 					currentRequestId = null;
@@ -261,7 +263,7 @@
 
 <svelte:head>
 	<title>
-		{`Playground | ${$WEBUI_NAME}`}
+		{$i18n.t('Playground')} | {$WEBUI_NAME}
 	</title>
 </svelte:head>
 
@@ -272,7 +274,8 @@
 				<div class="flex flex-col justify-between mb-2.5 gap-1">
 					<div class="flex justify-between items-center gap-2">
 						<div class=" text-2xl font-semibold self-center flex">
-							Playground <span class=" text-xs text-gray-500 self-center ml-1">(Beta)</span>
+							{$i18n.t('Playground')}
+							<span class=" text-xs text-gray-500 self-center ml-1">{$i18n.t('(Beta)')}</span>
 						</div>
 
 						<div>
@@ -289,9 +292,9 @@
 								}}
 							>
 								{#if mode === 'complete'}
-									Text Completion
+									{$i18n.t('Text Completion')}
 								{:else if mode === 'chat'}
-									Chat
+									{$i18n.t('Chat')}
 								{/if}
 
 								<div>
@@ -318,7 +321,9 @@
 							class="outline-none bg-transparent text-sm font-medium rounded-lg w-full placeholder-gray-400"
 							bind:value={selectedModelId}
 						>
-							<option class=" text-gray-800" value="" selected disabled>Select a model</option>
+							<option class=" text-gray-800" value="" selected disabled
+								>{$i18n.t('Select a model')}</option
+							>
 
 							{#each $models as model}
 								{#if model.name === 'hr'}
@@ -363,12 +368,12 @@
 				{#if mode === 'chat'}
 					<div class="p-1">
 						<div class="p-3 outline outline-1 outline-gray-200 dark:outline-gray-800 rounded-lg">
-							<div class=" text-sm font-medium">System</div>
+							<div class=" text-sm font-medium">{$i18n.t('System')}</div>
 							<textarea
 								id="system-textarea"
 								class="w-full h-full bg-transparent resize-none outline-none text-sm"
 								bind:value={system}
-								placeholder="You're a helpful assistant."
+								placeholder={$i18n.t("You're a helpful assistant.")}
 								rows="4"
 							/>
 						</div>
@@ -388,7 +393,7 @@
 									bind:this={textCompletionAreaElement}
 									class="w-full h-full p-3 bg-transparent outline outline-1 outline-gray-200 dark:outline-gray-800 resize-none rounded-lg text-sm"
 									bind:value={text}
-									placeholder="You're a helpful assistant."
+									placeholder={$i18n.t("You're a helpful assistant.")}
 								/>
 							{:else if mode === 'chat'}
 								<ChatCompletion bind:messages />
@@ -405,7 +410,7 @@
 								submitHandler();
 							}}
 						>
-							Submit
+							{$i18n.t('Submit')}
 						</button>
 					{:else}
 						<button
@@ -414,7 +419,7 @@
 								stopResponse();
 							}}
 						>
-							Cancel
+							{$i18n.t('Cancel')}
 						</button>
 					{/if}
 				</div>
